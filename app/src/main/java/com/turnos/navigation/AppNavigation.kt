@@ -219,13 +219,13 @@ fun AppNavigation() {
                 onSaveService = viewModel::saveNewService,
                 onSavePersonal = viewModel::saveNewPersonal,
                 onEditService = { /* ... */ },
-                onDeleteService = { /* ... */ },
+                onDeleteService = { serviceDto -> viewModel.deleteService(serviceDto.id) },
 
 
                 uiState = uiState,
                 onUpdateTab = viewModel::updateSelectedTab,
                 onEditPersonal = { /* ... */ },
-                onDeletePersonal = { /* ... */ }
+                onDeletePersonal = { personalDto -> viewModel.deletePersonal(personalDto.id) },
             )
         }
 

@@ -243,7 +243,7 @@ fun ServiceCard(
             // Contenido de texto y botones
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = service.name,
+                    text = service.name ?: "",
                     color = DarkBackground,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp
@@ -265,7 +265,7 @@ fun ServiceCard(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = service.description,
+                    text = service.description ?: "",
                     color = DarkBackground.copy(alpha = 0.7f),
                     fontSize = 14.sp
                 )
@@ -325,7 +325,7 @@ fun PersonalCard(
             // Contenido de texto y botones
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = person.name,
+                    text = person.name ?: "Personal sin nombre",
                     color = DarkBackground,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp
@@ -334,7 +334,7 @@ fun PersonalCard(
 
                 // Rol / Especialidad
                 Text(
-                    text = person.role,
+                    text = person.role ?: "",
                     color = DarkBackground.copy(alpha = 0.7f),
                     fontSize = 14.sp
                 )

@@ -1,10 +1,18 @@
 package com.turnos.model
 
+import com.google.gson.annotations.SerializedName
+
 data class ServiceDto(
-    val id: Int,
-    val name: String,
+
+
+    val id: Long,
+    @SerializedName("nombre")
+    val name: String?,
+    @SerializedName("duracion")
     val durationMinutes: Int,
-    val description: String,
+    @SerializedName("descripcion")
+    val description: String?,
+    @SerializedName("precio")
     val price: Double,
 
     )

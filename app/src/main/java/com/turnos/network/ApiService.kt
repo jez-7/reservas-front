@@ -69,7 +69,7 @@ interface ApiService {
         @Header("Authorization") token: String
     ): List<PersonalDto>
 
-    @POST("/api/services")
+    @POST("/api/service")
     suspend fun createService(
         @Header("Authorization") token: String,
         @Body request: NewServiceRequest
@@ -80,6 +80,20 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: NewPersonalRequest
     ): Unit
+
+    @DELETE("/api/service/{id}")
+    suspend fun delete(
+        @Header("Authorization") token: String,
+        @Path("id") serviceId: Long
+    )
+
+    @DELETE("/api/personal/{id}")
+    suspend fun deletePersonal(
+        @Header("Authorization") token: String,
+        @Path("id") personalId: Long
+    )
+
+
 
     // ---------------------------------------------------------------- ENDPOINTS DE STATS ----------------------------------------------------------------------------
 

@@ -1,5 +1,6 @@
 package com.turnos.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.turnos.network.ApiService
@@ -84,11 +85,17 @@ class ServicesViewModel(
                 price = priceDouble
             )
 
-            apiService.createService(
-                token = "Bearer $token",
-                request = request
-            )
-            fetchData() // recargar listas
+            try {
+                apiService.createService(
+                    token = "Bearer $token",
+                    request = request
+                )
+                _uiState.update { it.copy(error = null) }
+                fetchData()
+            } catch (e: Exception) {
+                Log.e("ServicesVM", "Error al crear servicio", e)
+                _uiState.update { it.copy(error = "Error al guardar servicio: ${e.message}") }
+            }
         }
     }
 
@@ -109,6 +116,53 @@ class ServicesViewModel(
                 request = request
             )
             fetchData() // recargar listas
+        }
+    }
+
+    fun deleteService(serviceId: Long) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            val token = tokenManager.getAuthToken()
+
+            if (token.isEmpty()) {
+                _uiState.update { it.copy(isLoading = false, error = "Autenticación requerida para eliminar.") }
+                return@launch
+            }
+
+            try {
+                // Llama al endpoint DELETE del ApiService
+                apiService.delete(token = "Bearer $token", serviceId = serviceId)
+
+                // Si es exitoso, recarga la lista para actualizar la UI
+                fetchData()
+
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = "Error al eliminar servicio: ${e.message}") }
+            }
+        }
+    }
+
+    // --- FUNCIÓN PARA ELIMINAR PERSONAL ---
+    fun deletePersonal(personalId: Long) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            val token = tokenManager.getAuthToken()
+
+            if (token.isEmpty()) {
+                _uiState.update { it.copy(isLoading = false, error = "Autenticación requerida para eliminar.") }
+                return@launch
+            }
+
+            try {
+                // Llama al endpoint DELETE del ApiService
+                apiService.deletePersonal(token = "Bearer $token", personalId = personalId)
+
+                // Si es exitoso, recarga la lista para actualizar la UI
+                fetchData()
+
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = "Error al eliminar personal: ${e.message}") }
+            }
         }
     }
 }
