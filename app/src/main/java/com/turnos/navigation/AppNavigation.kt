@@ -27,6 +27,7 @@ fun AppNavigation() {
     val context = LocalContext.current
     val appContainer = remember { (context.applicationContext as AppTurnos).appContainer }
 
+
     // 2. definir el NavHost
     NavHost(
         navController = navController,
@@ -235,6 +236,8 @@ fun AppNavigation() {
             // 1. Obtener la Factory e inyectar el ViewModel
             val profileFactory = remember { appContainer.profileViewModelFactory }
             val viewModel: ProfileViewModel = viewModel(factory = profileFactory)
+            val loginFactory = remember { appContainer.loginViewModelFactory }
+            val loginViewModel: LoginViewModel = viewModel(factory = loginFactory)
 
             // 2. Observar el estado
             val uiState by viewModel.uiState.collectAsState()
@@ -251,6 +254,18 @@ fun AppNavigation() {
                         restoreState = true
                     }
                 },
+
+                onLogout = {
+                    loginViewModel.logout() // Limpia el token (necesita LoginViewModel)
+                    // Navega a la pantalla de Welcome y elimina la pila de navegación
+                    navController.navigate(Screen.Welcome.route) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            inclusive = true // Elimina todo el historial
+                        }
+                    }
+                },
+
+
 
                 onSaveProfile = {
                     navController.popBackStack()

@@ -32,6 +32,12 @@ class LoginViewModel(
         _uiState.update { it.copy(password = password) }
     }
 
+    fun logout() {
+        viewModelScope.launch {
+            tokenManager.clearAuthToken()
+        }
+    }
+
     fun authenticate(onSuccess: () -> Unit) {
         _uiState.update { it.copy(isLoading = true, error = null) }
 

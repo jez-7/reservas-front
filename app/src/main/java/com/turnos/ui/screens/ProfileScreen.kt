@@ -29,12 +29,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.rememberScrollState
 import coil.compose.rememberAsyncImagePainter
 import com.turnos.model.ProfileDto
 import com.turnos.navigation.Screen
 import com.turnos.ui.theme.*
 import com.turnos.viewmodel.*
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,13 +53,16 @@ fun ProfileScreen(
     onAddressChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onImageSelected: (Uri?) -> Unit,
-    onSaveClick: (ProfileDto, Uri?, Context) -> Unit // Función que guarda y sube la imagen
+    onSaveClick: (ProfileDto, Uri?, Context) -> Unit, // Función que guarda y sube la imagen
+    onLogout: () -> Unit
 ) {
     val context = LocalContext.current
 
     // Obtenemos los datos del DTO o usamos valores seguros por defecto
     val profileData = uiState.profile
     val currentDescriptionLength = profileData?.description?.length ?: 0
+    val scope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     // Colores de TextField (se mantienen)
     val textFieldColors = OutlinedTextFieldDefaults.colors(
@@ -84,151 +89,268 @@ fun ProfileScreen(
         }
     )
 
-    Scaffold(
-        topBar = { AppToolbar(title = "Perfil") },
-        bottomBar = { BottomNavBar(currentRoute = currentRoute, onNavigateTo = onNavigateTo) },
-        containerColor = DarkBackground
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(androidx.compose.foundation.rememberScrollState())
-                    .padding(top = 16.dp, bottom = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        // --- CONTENIDO DEL PANEL LATERAL (DRAWER) ---
+        drawerContent = {
+            ModalDrawerSheet(
+                modifier = Modifier.fillMaxWidth(0.7f),
+                drawerContainerColor = DarkBackground
             ) {
-                // --- FOTO DEL NEGOCIO ---
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
+                Text("Perfil",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = WhiteText,
+                    modifier = Modifier.padding(16.dp))
+
+
+                Divider()
+
+                // Botón de Cerrar Sesión
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Filled.ExitToApp, contentDescription = "Cerrar Sesión") },
+                    label = {
+                        Text("Cerrar Sesión",
+                            // 4. Texto del label en rojo de error
+                            color = MaterialTheme.colorScheme.error)
+                    },
+                    selected = false,
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        onLogout() // Llama a la función de cierre de sesión inyectada
+                    },
+
+                    colors = NavigationDrawerItemDefaults.colors(
+                        unselectedContainerColor = DarkBackground
+                    )
+                )
+            }
+        },
+        // --- CONTENIDO PRINCIPAL DE LA PANTALLA (PROFILE UI) ---
+        content = {
+            Scaffold(
+                // 2. Implementar el TopBar para mostrar el ícono de menú
+                topBar = {
+                    TopAppBar(
+                        title = { Text("Mi Perfil", color = WhiteText) },
+                        navigationIcon = {
+                            // Ícono de las 3 líneas que abre el Drawer
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Filled.Menu, contentDescription = "Menú", tint = WhiteText)
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = DarkBackground,
+                            titleContentColor = WhiteText
+                        )
+                    )
+                },
+                content = { paddingValues ->
+                    // 3. El contenido original del ProfileScreen (Columna Scrollable)
+                    Column(
                         modifier = Modifier
-                            .size(100.dp)
-                            .clip(CircleShape)
-                            .background(CustomBlue.copy(alpha = 0.5f))
-                            .border(2.dp, CustomBlue, CircleShape)
-                            .clickable { imagePickerLauncher.launch("image/*") }, // Ejecutar launcher
-                        contentAlignment = Alignment.Center
+                            .fillMaxSize()
+                            .background(DarkBackground)
+                            .padding(paddingValues) // IMPORTANTE: Aplicar el padding del TopBar
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // --- FOTO DEL NEGOCIO ---
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .clip(CircleShape)
+                                    .background(CustomBlue.copy(alpha = 0.5f))
+                                    .border(2.dp, CustomBlue, CircleShape)
+                                    .clickable { imagePickerLauncher.launch("image/*") }, // Ejecutar launcher
+                                contentAlignment = Alignment.Center
+                            ) {
 
-                        val imageModel = uiState.imageUrlUri ?: profileData?.profileImageUrl
+                                val imageModel = uiState.imageUrlUri ?: profileData?.profileImageUrl
 
-                        if (imageModel != null) {
-                            // Muestra la imagen seleccionada (Uri) o la imagen remota (String URL)
-                            Image(
-                                painter = rememberAsyncImagePainter(model = imageModel),
-                                contentDescription = "Foto del negocio seleccionada",
-                                modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                contentScale = ContentScale.Crop
+                                if (imageModel != null) {
+                                    // Muestra la imagen seleccionada (Uri) o la imagen remota (String URL)
+                                    Image(
+                                        painter = rememberAsyncImagePainter(model = imageModel),
+                                        contentDescription = "Foto del negocio seleccionada",
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    // Muestra el placeholder
+                                    Icon(
+                                        Icons.Filled.Person,
+                                        contentDescription = "Placeholder de perfil",
+                                        tint = WhiteText.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(60.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Foto del negocio",
+                                color = WhiteText,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
                             )
-                        } else {
-                            // Muestra el placeholder
+
+                        }
+
+                        Spacer(modifier = Modifier.height(32.dp))
+                        Text(
+                            text = "Información del negocio",
+                            color = WhiteText,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                        )
+
+                        // --- URL ---
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Icon(
-                                Icons.Filled.Person,
-                                contentDescription = "Placeholder de perfil",
-                                tint = WhiteText.copy(alpha = 0.7f),
-                                modifier = Modifier.size(60.dp)
+                                Icons.Filled.Web,
+                                contentDescription = "URL",
+                                tint = LightGrayText,
+                                modifier = Modifier.size(24.dp).padding(end = 8.dp)
+                            )
+                            OutlinedTextField(
+                                value = profileData?.urlSlug ?: "",
+                                onValueChange = { newValue ->
+                                    onUrlSlugChange(newValue)
+                                },
+                                label = {
+                                    Text(
+                                        "URL del negocio (Sin espacios)",
+                                        color = LightGrayText
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                colors = textFieldColors,
+                                shape = RoundedCornerShape(8.dp)
                             )
                         }
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // --- CORREO ---
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Filled.Email,
+                                contentDescription = "Correo",
+                                tint = LightGrayText,
+                                modifier = Modifier.size(24.dp).padding(end = 8.dp)
+                            )
+                            OutlinedTextField(
+                                value = profileData?.email ?: "",
+                                onValueChange = onEmailChange, // <-- Usa el callback inyectado
+                                label = { Text("Dirección de correo", color = LightGrayText) },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                                colors = textFieldColors,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // --- DIRECCIÓN ---
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Filled.LocationOn,
+                                contentDescription = "Ubicación",
+                                tint = LightGrayText,
+                                modifier = Modifier.size(24.dp).padding(end = 8.dp)
+                            )
+                            OutlinedTextField(
+                                value = profileData?.address ?: "",
+                                onValueChange = onAddressChange, // <-- Usa el callback inyectado
+                                label = { Text("Dirección del local", color = LightGrayText) },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                colors = textFieldColors,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // --- DESCRIPCIÓN ---
+                        Text(
+                            text = "Descripción",
+                            color = LightGrayText,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                        ) // Etiqueta
+                        OutlinedTextField(
+                            value = profileData?.description ?: "",
+                            onValueChange = { if (it.length <= 500) onDescriptionChange(it) }, // <-- Usa el callback
+                            label = { Text("Escribe una descripción...", color = LightGrayText) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                            singleLine = false,
+                            colors = textFieldColors,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        Text(
+                            text = "$currentDescriptionLength/500 caracteres",
+                            color = LightGrayText,
+                            fontSize = 12.sp,
+                            modifier = Modifier.fillMaxWidth().align(Alignment.End)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "Foto del negocio", color = WhiteText, fontWeight = FontWeight.Bold, fontSize = 18.sp)
 
-                }
+                    // --- BOTÓN GUARDAR CAMBIOS ---
+                    Button(
+                        onClick = {
+                            // 1. Crear el DTO con los datos actuales del formulario (del uiState)
+                            val profileDto = uiState.profile ?: ProfileDto()
 
-                Spacer(modifier = Modifier.height(32.dp))
-                Text(text = "Información del negocio", color = WhiteText, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp))
+                            // 2. Llama al callback principal de guardado del ViewModel
+                            onSaveClick(
+                                profileDto, // DTO que contiene los últimos cambios
+                                uiState.imageUrlUri,
+                                context // El Context para la conversión de archivo
+                            )
 
-                // --- URL ---
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Web, contentDescription = "URL", tint = LightGrayText, modifier = Modifier.size(24.dp).padding(end = 8.dp))
-                    OutlinedTextField(
-                        value = profileData?.urlSlug ?: "",
-                        onValueChange = { newValue ->
-                            onUrlSlugChange(newValue)
+                            // 3. Callback de navegación/feedback
+                            onSaveProfile(profileDto)
                         },
-                        label = { Text("URL del negocio (Sin espacios)", color = LightGrayText) },
-                        modifier = Modifier.weight(1f), singleLine = true, colors = textFieldColors, shape = RoundedCornerShape(8.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .padding(bottom = 8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = CustomBlue),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Filled.Save,
+                                contentDescription = "Guardar",
+                                tint = WhiteText
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Guardar Cambios", color = WhiteText, fontWeight = FontWeight.Bold)
+                        }
+                    }
 
-                // --- CORREO ---
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Email, contentDescription = "Correo", tint = LightGrayText, modifier = Modifier.size(24.dp).padding(end = 8.dp))
-                    OutlinedTextField(
-                        value = profileData?.email ?: "",
-                        onValueChange = onEmailChange, // <-- Usa el callback inyectado
-                        label = { Text("Dirección de correo", color = LightGrayText) },
-                        modifier = Modifier.weight(1f), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), colors = textFieldColors, shape = RoundedCornerShape(8.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
 
-                // --- DIRECCIÓN ---
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.LocationOn, contentDescription = "Ubicación", tint = LightGrayText, modifier = Modifier.size(24.dp).padding(end = 8.dp))
-                    OutlinedTextField(
-                        value = profileData?.address ?: "",
-                        onValueChange = onAddressChange, // <-- Usa el callback inyectado
-                        label = { Text("Dirección del local", color = LightGrayText) },
-                        modifier = Modifier.weight(1f), singleLine = true, colors = textFieldColors, shape = RoundedCornerShape(8.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // --- DESCRIPCIÓN ---
-                Text(text = "Descripción", color = LightGrayText, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) // Etiqueta
-                OutlinedTextField(
-                    value = profileData?.description ?: "",
-                    onValueChange = { if (it.length <= 500) onDescriptionChange(it) }, // <-- Usa el callback
-                    label = { Text("Escribe una descripción...", color = LightGrayText) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
-                    singleLine = false, colors = textFieldColors, shape = RoundedCornerShape(8.dp)
-                )
-                Text(text = "$currentDescriptionLength/500 caracteres", color = LightGrayText, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().align(Alignment.End))
-                Spacer(modifier = Modifier.height(16.dp))
-
-            }
-
-            // --- BOTÓN GUARDAR CAMBIOS ---
-            Button(
-                onClick = {
-                    // 1. Crear el DTO con los datos actuales del formulario (del uiState)
-                    val profileDto = uiState.profile ?: ProfileDto()
-
-                    // 2. Llama al callback principal de guardado del ViewModel
-                    onSaveClick(
-                        profileDto, // DTO que contiene los últimos cambios
-                        uiState.imageUrlUri,
-                        context // El Context para la conversión de archivo
-                    )
-
-                    // 3. Callback de navegación/feedback
-                    onSaveProfile(profileDto)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .padding(bottom = 8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = CustomBlue),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Save, contentDescription = "Guardar", tint = WhiteText)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Guardar Cambios", color = WhiteText, fontWeight = FontWeight.Bold)
-                }
-            }
+                })
         }
-    }
+
+    )
+
 }
 
 // --- PREVIEW ---
@@ -271,7 +393,8 @@ fun ProfileScreenPreview() {
             // Simulación de la función de guardado
             onSaveClick = { dto, uri, context ->
                 println("Datos guardados: $dto, URI: $uri")
-            }
+            },
+            onLogout = { }
         )
     }
 }
