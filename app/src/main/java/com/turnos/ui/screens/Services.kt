@@ -405,12 +405,10 @@ fun ServicesScreenPreview() {
 
             uiState = mockUiState,
 
-            // 3. PASAR LA FUNCIÓN DE ACTUALIZACIÓN DEL ESTADO LOCAL
             onUpdateTab = { newTab ->
-                mockSelectedTab = newTab // <--- ¡ESTO HACE QUE EL BOTÓN FUNCIONE EN EL PREVIEW!
+                mockSelectedTab = newTab
             },
 
-            // ... (resto de callbacks vacíos)
             onSaveService = { },
             onSavePersonal = { },
             onEditService = { },
