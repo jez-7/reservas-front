@@ -144,6 +144,12 @@ fun ProfileScreen(
                         )
                     )
                 },
+                bottomBar = {
+                    BottomNavBar( // <--- Componente que ya usas en Home.kt
+                        currentRoute = currentRoute,
+                        onNavigateTo = onNavigateTo
+                    )
+                },
                 content = { paddingValues ->
                     // 3. El contenido original del ProfileScreen (Columna Scrollable)
                     Column(
@@ -309,41 +315,43 @@ fun ProfileScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
 
-                    }
+                        // --- BOTÓN GUARDAR CAMBIOS ---
+                        Button(
+                            onClick = {
+                                // 1. Crear el DTO con los datos actuales del formulario (del uiState)
+                                val profileDto = uiState.profile ?: ProfileDto()
 
-                    // --- BOTÓN GUARDAR CAMBIOS ---
-                    Button(
-                        onClick = {
-                            // 1. Crear el DTO con los datos actuales del formulario (del uiState)
-                            val profileDto = uiState.profile ?: ProfileDto()
+                                // 2. Llama al callback principal de guardado del ViewModel
+                                onSaveClick(
+                                    profileDto, // DTO que contiene los últimos cambios
+                                    uiState.imageUrlUri,
+                                    context // El Context para la conversión de archivo
+                                )
 
-                            // 2. Llama al callback principal de guardado del ViewModel
-                            onSaveClick(
-                                profileDto, // DTO que contiene los últimos cambios
-                                uiState.imageUrlUri,
-                                context // El Context para la conversión de archivo
-                            )
-
-                            // 3. Callback de navegación/feedback
-                            onSaveProfile(profileDto)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .padding(bottom = 8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = CustomBlue),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.Save,
-                                contentDescription = "Guardar",
-                                tint = WhiteText
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Guardar Cambios", color = WhiteText, fontWeight = FontWeight.Bold)
+                                // 3. Callback de navegación/feedback
+                                onSaveProfile(profileDto)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .padding(bottom = 8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = CustomBlue),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Filled.Save,
+                                    contentDescription = "Guardar",
+                                    tint = WhiteText
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Guardar Cambios", color = WhiteText, fontWeight = FontWeight.Bold)
+                            }
                         }
+
                     }
+
+
 
 
                 })
