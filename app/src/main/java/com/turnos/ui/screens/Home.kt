@@ -32,15 +32,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalInspectionMode
 import com.turnos.navigation.Screen
 import com.turnos.model.AppointmentDto
-import com.turnos.viewmodel.HomeViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 @Composable
 fun isPreviewMode(): Boolean {
     return LocalInspectionMode.current
 }
-
-
-// --- 2. PANTALLA PRINCIPAL ---
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -50,20 +47,17 @@ fun HomeScreen(
     appointments: List<AppointmentDto>,
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
-    onDeleteAppointment: (Int) -> Unit
-
+    onDeleteAppointment: (Long) -> Unit, // ✅ Cambiado de Int a Long
+    onRefresh: () -> Unit, // ✅ NUEVO: Callback para refrescar
+    isRefreshing: Boolean // ✅ NUEVO: Estado de carga
 ) {
     val topPaddingDp = if (isPreviewMode()) 24.dp else 80.dp
-    
+
     val today = LocalDate.now()
     val currentMonthStart = today.withDayOfMonth(1)
 
-     // Rango de meses: 5 años antes a 5 años después (10 * 12 = 120 meses)
-    val startMonth = LocalDate.of(2025, 10, 1) // Punto de inicio fijo (
-
-    // Calculamos la posición actual: diferencia de meses desde el inicio
+    val startMonth = LocalDate.of(2025, 10, 1)
     val totalMonths = startMonth.until(currentMonthStart).months.toInt()
-
     val totalPageCount = 120
 
     val pagerState = rememberPagerState(
@@ -80,106 +74,150 @@ fun HomeScreen(
         appointments.count { it.date.isAfter(LocalDate.now()) }
     }
 
-    // Turnos filtrados para el día seleccionado
     val currentDayAppointments = remember(appointments, selectedDate) {
         appointments.filter { it.date == selectedDate }
     }
 
-    // Función para eliminar turno
-    val deleteAppointment: (Int) -> Unit = onDeleteAppointment
-
-    // Determinar el mes visible en el Pager
     val visibleMonth = startMonth.plusMonths(pagerState.currentPage.toLong()).withDayOfMonth(1)
 
     Scaffold(
         topBar = { AppToolbar("Inicio") },
-        bottomBar = { BottomNavBar(
-            currentRoute = currentRoute, 
-            onNavigateTo = onNavigateTo
-        ) },
+        bottomBar = {
+            BottomNavBar(
+                currentRoute = currentRoute,
+                onNavigateTo = onNavigateTo
+            )
+        },
         containerColor = DarkBackground
     ) { paddingValues ->
-        LazyColumn(
+
+        // ✅ NUEVO: SwipeRefresh envuelve el contenido
+        SwipeRefresh(
+            state = rememberSwipeRefreshState(isRefreshing),
+            onRefresh = onRefresh,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            item {
-                // Tarjetas de contadores
-                CountCards(todayAppointmentsCount, pendingAppointmentsCount)
-                Spacer(modifier = Modifier.height(30.dp))
-            }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                item {
+                    CountCards(todayAppointmentsCount, pendingAppointmentsCount)
+                    Spacer(modifier = Modifier.height(30.dp))
+                }
 
-            // Calendario interactivo
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = WhiteText),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        // Header del mes y botones de navegación
-                        CalendarHeader(
-                            month = visibleMonth,
-                            onPreviousClick = {
-                                scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
-                            },
-                            onNextClick = {
-                                scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Pager para el calendario (simula el cambio de mes)
-                        HorizontalPager(
-                            state = pagerState,
-                            modifier = Modifier.wrapContentHeight()
-                        ) { page ->
-                            // La lógica de cálculo del mes visible se mantiene igual
-                            val month = startMonth.plusMonths(page.toLong()).withDayOfMonth(1)
-
-                            CalendarGrid(
-                                month = month,
-                                // 1. PASAMOS EL ESTADO ACTUAL DE LA FECHA SELECCIONADA
-                                selectedDate = selectedDate,
-                                // 2. PASAMOS EL CALLBACK INYECTADO PARA ACTUALIZAR EL ESTADO
-                                onDateSelected = onDateSelected,
-                                // 3. PASAMOS LA LISTA DE TURNOS
-                                appointments = appointments
+                // Calendario interactivo
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = WhiteText),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            CalendarHeader(
+                                month = visibleMonth,
+                                onPreviousClick = {
+                                    scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                                },
+                                onNextClick = {
+                                    scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                                }
                             )
-                        }
+                            Spacer(modifier = Modifier.height(16.dp))
 
+                            HorizontalPager(
+                                state = pagerState,
+                                modifier = Modifier.wrapContentHeight()
+                            ) { page ->
+                                val month = startMonth.plusMonths(page.toLong()).withDayOfMonth(1)
+
+                                CalendarGrid(
+                                    month = month,
+                                    selectedDate = selectedDate,
+                                    onDateSelected = onDateSelected,
+                                    appointments = appointments
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Lista de turnos
+                item {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    TurnosListHeader(selectedDate)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                if (currentDayAppointments.isEmpty()) {
+                    item {
+                        Text(
+                            "No hay turnos para ${selectedDate.format(DateTimeFormatter.ofPattern("dd MMMM"))}.",
+                            color = LightGrayText,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        )
+                    }
+                } else {
+                    items(currentDayAppointments, key = { it.id }) { appointment ->
+                        AppointmentListItem(
+                            appointment = appointment,
+                            onDelete = onDeleteAppointment
+                        )
                     }
                 }
             }
+        }
+    }
+}
 
-            // Lista de turnos debajo del calendario
-            item {
-                Spacer(modifier = Modifier.height(24.dp))
-                TurnosListHeader(selectedDate)
-                Spacer(modifier = Modifier.height(8.dp))
-            }
+// ✅ ACTUALIZADO: Cambiar el tipo de parámetro a Long
+@Composable
+fun AppointmentListItem(appointment: AppointmentDto, onDelete: (Long) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            modifier = Modifier.weight(1f)
+                .background(DarkBackground),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(modifier = Modifier
+                .width(4.dp)
+                .fillMaxHeight()
+                .background(appointment.color)
+                .clip(RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp)))
 
-            // Lista de turnos del día
-            if (currentDayAppointments.isEmpty()) {
-                item {
-                    Text(
-                        "No hay turnos para ${selectedDate.format(DateTimeFormatter.ofPattern("dd MMMM"))}.",
-                        color = LightGrayText,
-                        modifier = Modifier.padding(vertical = 16.dp)
-                    )
-                }
-            } else {
-                items(currentDayAppointments, key = { it.id }) { appointment ->
-                    AppointmentListItem(
-                        appointment = appointment, //
-                        onDelete = deleteAppointment
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = "${appointment.time}: ",
+                color = WhiteText,
+                fontSize = 15.sp
+            )
+            Text(
+                text = appointment.description,
+                color = appointment.color,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        IconButton(onClick = { onDelete(appointment.id) }) {
+            Icon(
+                Icons.Filled.Delete,
+                contentDescription = "Eliminar turno",
+                tint = appointment.color.copy(alpha = 0.7f)
+            )
         }
     }
 }
@@ -415,55 +453,7 @@ fun TurnosListHeader(selectedDate: LocalDate) {
     )
 }
 
-@Composable
-fun AppointmentListItem(appointment: AppointmentDto, onDelete: (Int) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(50.dp)
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        // Línea de color y texto
-        Row(
-            modifier = Modifier.weight(1f)
-                .background(DarkBackground), // Fondo de la lista
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Spacer(modifier = Modifier
-                .width(4.dp)
-                .fillMaxHeight()
-                .background(appointment.color)
-                .clip(RoundedCornerShape(topStart = 4.dp, bottomStart = 4.dp)))
 
-            Spacer(modifier = Modifier.width(8.dp))
-
-            val formattedDay = appointment.date.format(DateTimeFormatter.ofPattern("EEEE d", Locale.forLanguageTag("es"))).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.forLanguageTag("es")) else it.toString() }
-
-            Text(
-                text = "${appointment.time}: ",
-                color = WhiteText,
-                fontSize = 15.sp
-            )
-            Text(
-                text = appointment.description,
-                color = appointment.color, // Descripción en el color del turno
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        // Icono de eliminar
-        IconButton(onClick = { onDelete(appointment.id) }) {
-            Icon(
-                Icons.Filled.Delete,
-                contentDescription = "Eliminar turno",
-                tint = appointment.color.copy(alpha = 0.7f) // Usar el color del turno para el icono
-            )
-        }
-    }
-}
 
 @Composable
 fun BottomNavBar(
@@ -571,25 +561,3 @@ fun BottomNavBar(
 }
 
 
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    // Datos simulados para el Preview:
-    val mockAppointments = emptyList<AppointmentDto>().toMutableStateList()
-    val mockDate = LocalDate.now()
-
-    TurnosTheme {
-        HomeScreen(
-            currentRoute = Screen.Home.route,
-            onNavigateTo = { },
-            // Simulamos los parámetros que el ViewModel ahora gestionaría
-            appointments = mockAppointments,
-            selectedDate = mockDate,
-            onDeleteAppointment = {},
-            onDateSelected = {}
-
-            // Nota: Si usas la inyección directa del ViewModel, necesitarás una librería
-            // de testing como Turbine para simular el estado, pero esta es la forma simple.
-        )
-    }
-}

@@ -17,11 +17,11 @@ data class HomeUiState(
     val appointments: List<AppointmentDto> = emptyList(),
     val selectedDate: LocalDate = LocalDate.now(),
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val errorMessage: String? = null
 )
 
 class HomeViewModel(
-    // Inyección de dependencias (se asume que se pasan con un Factory/Hilt/Koin)
     private val apiService: ApiService,
     private val tokenManager: TokenManager
 ) : ViewModel() {
@@ -30,11 +30,11 @@ class HomeViewModel(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        // Carga inicial al iniciar la pantalla
+        // Carga inicial
         fetchAppointments()
     }
 
-    // --- 2. FUNCIÓN PARA CARGAR TURNOS (GET) ---
+    // --- FUNCIÓN PRINCIPAL PARA CARGAR TURNOS (GET) ---
     fun fetchAppointments() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
@@ -46,47 +46,51 @@ class HomeViewModel(
             }
 
             try {
-                // Llama al endpoint de Retrofit para obtener todos los turnos
                 val fetchedAppointments = apiService.getAllAppointments(token = "Bearer $token")
-
-                // Actualiza el estado con los turnos recibidos
                 _uiState.update {
                     it.copy(
                         appointments = fetchedAppointments,
-                        isLoading = false
+                        isLoading = false,
+                        isRefreshing = false
                     )
                 }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
+                        isRefreshing = false,
                         errorMessage = "Error al cargar turnos: ${e.message}"
                     )
                 }
             }
         }
     }
+    fun refreshAppointments() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true) }
+            fetchAppointments()
+        }
+    }
+
 
     // --- 3. FUNCIÓN PARA ELIMINAR TURNO (DELETE) ---
-    fun deleteAppointment(appointmentId: Int) {
+    fun deleteAppointment(appointmentId: Long) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val token = tokenManager.getAuthToken()
 
             try {
-                // Llama al endpoint DELETE
-                apiService.deleteAppointment(token = "Bearer $token", appointmentId = appointmentId)
-
-                // Si la eliminación es exitosa en el backend, actualizamos el estado local
-                _uiState.update { currentState ->
-                    currentState.copy(
-                        appointments = currentState.appointments.filter { it.id != appointmentId },
+                apiService.deleteAppointment("Bearer $token", appointmentId.toInt()) // 👈 el backend probablemente reciba Int
+                _uiState.update { current ->
+                    current.copy(
+                        appointments = current.appointments.filter { it.id != appointmentId },
                         isLoading = false
                     )
                 }
-
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = "Error al eliminar: ${e.message}") }
+                _uiState.update {
+                    it.copy(isLoading = false, errorMessage = "Error al eliminar: ${e.message}")
+                }
             }
         }
     }

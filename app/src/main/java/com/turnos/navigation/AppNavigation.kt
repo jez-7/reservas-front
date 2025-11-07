@@ -172,8 +172,6 @@ fun AppNavigation() {
             val uiState by viewModel.uiState.collectAsState()
 
             HomeScreen(
-
-                // INYECCIÓN DE DATOS Y LÓGICA DEL VIEWMODEL
                 appointments = uiState.appointments,
                 selectedDate = uiState.selectedDate,
                 onDateSelected = viewModel::selectDate,
@@ -181,13 +179,13 @@ fun AppNavigation() {
                 currentRoute = Screen.Home.route,
                 onNavigateTo = { route ->
                     navController.navigate(route) {
-                        // Lógica de BottomNavBar
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true }
+                        popUpTo(navController.graph.startDestinationId) { saveState = true }
                         launchSingleTop = true
                         restoreState = true
                     }
-                }
+                },
+                onRefresh = viewModel::refreshAppointments,
+                isRefreshing = uiState.isRefreshing
             )
         }
 
