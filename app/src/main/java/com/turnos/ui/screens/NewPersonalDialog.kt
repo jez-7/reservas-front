@@ -32,7 +32,6 @@ fun NewPersonalDialog(
 ) {
 
     var name by remember { mutableStateOf("") }
-    var role by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") } // <-- Nuevo estado
     var passwordVisible by remember { mutableStateOf(false) }
@@ -88,13 +87,7 @@ fun NewPersonalDialog(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // --- Campo Rol / Especialidad ---
-                    OutlinedTextField(
-                        value = role, onValueChange = { role = it },
-                        label = { Text("Rol / Especialidad", color = DarkBackground.copy(alpha = 0.6f)) },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true, colors = colors, shape = RoundedCornerShape(8.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+
 
                     // --- Campo Correo Electrónico ---
                     OutlinedTextField(
@@ -139,13 +132,13 @@ fun NewPersonalDialog(
                     Button(
                         onClick = {
                             // Construir el DTO SÓLO con los campos requeridos
-                            val data = NewPersonalRequest(name, role, email, phone, password)
+                            val data = NewPersonalRequest(name, email, phone, password)
                             onSave(data)
                         },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = CustomBlue),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = name.isNotBlank() && role.isNotBlank() && email.isNotBlank() && password.isNotBlank()
+                        enabled = name.isNotBlank()  && email.isNotBlank() && password.isNotBlank()
                     ) {
                         Text("Guardar Personal", color = WhiteText, fontWeight = FontWeight.Bold)
                     }

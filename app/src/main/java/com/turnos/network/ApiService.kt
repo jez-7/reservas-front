@@ -34,13 +34,13 @@ interface ApiService {
     // ---------------------------------------------------------------- ENDPOINTS DE PROFILE ----------------------------------------------------------------------------
 
     // 1. OBTENER PERFIL ACTUAL
-    @GET("/api/profile")
+    @GET("/api/negocio/profile")
     suspend fun getProfile(
         @Header("Authorization") token: String
     ): ProfileDto
 
     // 2. ACTUALIZAR DATOS DEL PERFIL
-    @PUT("/api/profile")
+    @PUT("/api/negocio/profile")
     suspend fun updateProfile(
         @Header("Authorization") token: String,
         @Body profileDto: ProfileDto
@@ -48,7 +48,7 @@ interface ApiService {
 
     // 3. SUBIR IMAGEN
     @Multipart
-    @POST("/api/profile/upload-image")
+    @POST("/api/negocio/profile/upload-image")
     suspend fun uploadProfileImage(
         @Header("Authorization") token: String,
 

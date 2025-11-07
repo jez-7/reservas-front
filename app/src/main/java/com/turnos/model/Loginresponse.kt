@@ -7,5 +7,11 @@ data class LoginResponse(
     val token: String,
 
     @SerializedName("userRole")
-    val userRole: String
+    val userRole: String,
+
+    @SerializedName("name")
+    val name: String,
+
+    @SerializedName("email")
+    val email: String
 )

@@ -100,7 +100,6 @@ class ServicesViewModel(
             val request = NewPersonalRequest(
                 name = data.name,
                 email = data.email,
-                role = data.role,
                 phone = data.phone,
                 password = data.password
             )
